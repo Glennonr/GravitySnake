@@ -3,6 +3,7 @@ package edu.moravian.csci299.gravitysnake;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Service;
+import android.content.Intent;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -42,7 +43,25 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
 
         snakeGameView = findViewById(R.id.snakeGameView);
 
-        snakeGameView.setDifficulty(0);
+        Intent intent = getIntent();
+        String difficulty = intent.getStringExtra("spinnerDifficultySelected");
+        switch (difficulty) {
+            case "Beginner":
+                snakeGameView.setDifficulty(0);
+                break;
+            case "Easy":
+                snakeGameView.setDifficulty(1);
+                break;
+            case "Medium":
+                snakeGameView.setDifficulty(2);
+                break;
+            case "Hard":
+                snakeGameView.setDifficulty(3);
+                break;
+            default:
+                snakeGameView.setDifficulty(4);
+                break;
+        }
     }
 
 
@@ -88,8 +107,6 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onSensorChanged(SensorEvent event) {
         snakeGameView.onSensorChanged(event);
-        Log.d("GameActivity", "sensorChanged");
-
     }
 
     @Override

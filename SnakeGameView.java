@@ -100,9 +100,10 @@ public class SnakeGameView extends View implements SensorEventListener {
      */
     public void setDifficulty(int difficulty) {
         // TODO: may need to set lots of things here to change the game's difficulty
-            snakeGame.setInitialSpeed(difficulty+1);
+            snakeGame.setInitialSpeed(difficulty+0.5);
             snakeGame.setWallPlacementProbability(difficulty/10);
             snakeGame.setLengthIncreasePerFood(difficulty+1);
+            snakeGame.setLengthIncreasePerFood(10);
         }
 
     /**
@@ -130,9 +131,14 @@ public class SnakeGameView extends View implements SensorEventListener {
         // TODO: update the game and draw the view
         PointF foodLocation = snakeGame.getFoodLocation();
         canvas.drawCircle(foodLocation.x, foodLocation.y, snakeGame.FOOD_SIZE_DP, foodPaint);
+        canvas.drawText(String.valueOf(snakeGame.getScore()), canvas.getWidth()/2,100, scorePaint);
         List<PointF> snakeLocation = snakeGame.getSnakeBodyLocations();
-        for(PointF point: snakeLocation){
-            canvas.drawCircle(point.x, point.y, snakeGame.FOOD_SIZE_DP, snakePaint);
+        for(int i = 0; i< snakeLocation.size(); i++){
+            PointF point = snakeLocation.get(i);
+            if(i==0)
+                canvas.drawCircle(point.x, point.y, snakeGame.FOOD_SIZE_DP, scorePaint);
+            else
+                canvas.drawCircle(point.x, point.y, snakeGame.FOOD_SIZE_DP, snakePaint);
         }
         snakeGame.update();
     }
@@ -149,7 +155,6 @@ public class SnakeGameView extends View implements SensorEventListener {
         double angle = Math.atan2(y, -x);
 
         snakeGame.setMovementDirection(angle);
-        Log.d("SnakeGameView", "sensorChanged");
     }
 
     /** Does nothing but must be provided. */
