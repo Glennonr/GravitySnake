@@ -3,7 +3,9 @@ package edu.moravian.csci299.gravitysnake;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -26,7 +28,7 @@ import android.view.WindowManager;
  * setting the difficulty and the sensors.
  */
 public class GameActivity extends AppCompatActivity implements SensorEventListener {
-
+    private SharedPreferences preferences;
     private SensorManager sensorManager; // the system manager for sensors
     private Sensor gravitySensor; // the gravity sensor
 
@@ -37,37 +39,20 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
         hideSystemUI(); // forces it to be fullscreen
-
+        preferences = this.getSharedPreferences("edu.moravian.csci299.gravitysnake", Context.MODE_PRIVATE);
         sensorManager = (SensorManager) getSystemService(Service.SENSOR_SERVICE);
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
 
         snakeGameView = findViewById(R.id.snakeGameView);
 
         Intent intent = getIntent();
-        String difficulty = intent.getStringExtra("spinnerDifficultySelected");
-        switch (difficulty) {
-            case "Beginner":
-                snakeGameView.setDifficulty(0);
-                break;
-            case "Easy":
-                snakeGameView.setDifficulty(1);
-                break;
-            case "Medium":
-                snakeGameView.setDifficulty(2);
-                break;
-            case "Hard":
-                snakeGameView.setDifficulty(3);
-                break;
-            default:
-                snakeGameView.setDifficulty(4);
-                break;
-        }
+        int difficulty = intent.getIntExtra("spinnerDifficultySelected", 0);
+        String highScoreKey = intent.getStringExtra("spinnerDifficultySelected");
+        snakeGameView.setDifficulty(difficulty);
+        snakeGameView.setHighScoreKey(highScoreKey);
+        snakeGameView.setPreferences(this.preferences);
+
     }
-
-
-
-
-
 
     ///// Don't worry about the rest of this code - it deals with making a fullscreen app /////
 
@@ -104,11 +89,22 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
         timeoutHandler.postDelayed(hideUIRunnable, 2000);
     }
 
+    /**
+     * Called every time listener detects change in sensor values when checked at the sampling interval
+     * if any changes occurs listner calls method passing in SensorEvent containing information we need to
+     * pass to snakeGameView's onSensorChanged method to update view using new values.
+     * @param event- SensorEvent passed from listener, specifically in our case from gravity sensor
+     */
     @Override
     public void onSensorChanged(SensorEvent event) {
         snakeGameView.onSensorChanged(event);
     }
 
+    /**
+     * necessary for implementing onSensorListener but does nothing
+     * @param sensor
+     * @param accuracy
+     */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
 //      Do Nothing
@@ -121,5 +117,13 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+    /**
+     * Unregister listeners when the activity is paused
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
     }
 }

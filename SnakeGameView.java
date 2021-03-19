@@ -1,6 +1,7 @@
 package edu.moravian.csci299.gravitysnake;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -13,6 +14,7 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.content.SharedPreferences;
 
 import androidx.annotation.Nullable;
 
@@ -29,11 +31,15 @@ import java.util.List;
  * a few methods to this class.
  */
 public class SnakeGameView extends View implements SensorEventListener {
+    private String highScoreKey;
+    private SharedPreferences preferences;
+
     /** The paints and drawables used for the different parts of the game */
     // TODO: you will need to add many of these (this one is provided as an example for text paint)
     private final Paint scorePaint = new Paint();
     private final Paint foodPaint = new Paint();
     private final Paint snakePaint = new Paint();
+
 
 
     /** The metrics about the display to convert from dp and sp to px */
@@ -141,6 +147,7 @@ public class SnakeGameView extends View implements SensorEventListener {
                 canvas.drawCircle(point.x, point.y, snakeGame.FOOD_SIZE_DP, snakePaint);
         }
         snakeGame.update();
+        this.preferences.edit().putInt(highScoreKey, snakeGame.getScore()).apply();
     }
 
     @Override
@@ -160,4 +167,13 @@ public class SnakeGameView extends View implements SensorEventListener {
     /** Does nothing but must be provided. */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+
+
+    public void setPreferences(SharedPreferences preferences) {
+        this.preferences = preferences;
+    }
+
+    public void setHighScoreKey(String highScoreKey) {
+        this.highScoreKey = highScoreKey;
+    }
 }
