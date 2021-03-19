@@ -13,6 +13,7 @@ import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
+import android.content.SharedPreferences;
 
 import androidx.annotation.Nullable;
 
@@ -34,6 +35,9 @@ public class SnakeGameView extends View implements SensorEventListener {
     private final Paint scorePaint = new Paint();
     private final Paint foodPaint = new Paint();
     private final Paint snakePaint = new Paint();
+    private final Paint headPaint = new Paint();
+    private final Paint wallPaint = new Paint();
+
 
 
     /** The metrics about the display to convert from dp and sp to px */
@@ -41,6 +45,9 @@ public class SnakeGameView extends View implements SensorEventListener {
 
     /** The snake game for the logic behind this view */
     private final SnakeGame snakeGame;
+
+    private String highScoreKey;
+    private SharedPreferences preferences;
 
 
     // Required constructors for making your own view that can be placed in a layout
@@ -67,8 +74,9 @@ public class SnakeGameView extends View implements SensorEventListener {
         scorePaint.setFakeBoldText(true);
 
         foodPaint.setColor(Color.RED);
-
         snakePaint.setColor(Color.BLUE);
+        headPaint.setColor(Color.GREEN);
+        wallPaint.setColor(Color.YELLOW);
 
     }
 
@@ -101,9 +109,10 @@ public class SnakeGameView extends View implements SensorEventListener {
     public void setDifficulty(int difficulty) {
         // TODO: may need to set lots of things here to change the game's difficulty
             snakeGame.setInitialSpeed(difficulty+0.5);
-            snakeGame.setWallPlacementProbability(difficulty/10);
+            snakeGame.setWallPlacementProbability(difficulty / 10 + .1);
             snakeGame.setLengthIncreasePerFood(difficulty+1);
             snakeGame.setLengthIncreasePerFood(10);
+
         }
 
     /**
@@ -130,18 +139,28 @@ public class SnakeGameView extends View implements SensorEventListener {
 
         // TODO: update the game and draw the view
         PointF foodLocation = snakeGame.getFoodLocation();
-        canvas.drawCircle(foodLocation.x, foodLocation.y, snakeGame.FOOD_SIZE_DP, foodPaint);
+        List<PointF> wallLocations = snakeGame.getWallLocations();
+        canvas.drawCircle(foodLocation.x, foodLocation.y, dpToPx(SnakeGame.FOOD_SIZE_DP), foodPaint);
         canvas.drawText(String.valueOf(snakeGame.getScore()), canvas.getWidth()/2,100, scorePaint);
         List<PointF> snakeLocation = snakeGame.getSnakeBodyLocations();
-        for(int i = 0; i< snakeLocation.size(); i++){
+        for(int i = snakeLocation.size()-1; i > -1; i--){
             PointF point = snakeLocation.get(i);
             if(i==0)
-                canvas.drawCircle(point.x, point.y, snakeGame.FOOD_SIZE_DP, scorePaint);
+                canvas.drawCircle(point.x, point.y, dpToPx(Snake.BODY_PIECE_SIZE_DP), headPaint);
             else
-                canvas.drawCircle(point.x, point.y, snakeGame.FOOD_SIZE_DP, snakePaint);
+                canvas.drawCircle(point.x, point.y, dpToPx(Snake.BODY_PIECE_SIZE_DP), snakePaint);
         }
+        for(int i = 0; i < wallLocations.size(); i++)
+            canvas.drawCircle(wallLocations.get(i).x, wallLocations.get(i).y, dpToPx(SnakeGame.WALL_SIZE_DP), wallPaint);
+
         snakeGame.update();
+        this.preferences.edit().putInt(highScoreKey, snakeGame.getScore()).apply();
+
     }
+
+
+
+
 
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -160,4 +179,14 @@ public class SnakeGameView extends View implements SensorEventListener {
     /** Does nothing but must be provided. */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) { }
+
+
+    public void setPreferences(SharedPreferences preferences) {
+        this.preferences = preferences;
+    }
+
+    public void setHighScoreKey(String highScoreKey) {
+        this.highScoreKey = highScoreKey;
+    }
+
 }

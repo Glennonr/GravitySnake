@@ -8,12 +8,15 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
+import android.content.Context;
+import android.content.SharedPreferences;
 
 /**
  * Activity that runs the actual game. Besides making sure the app is displayed
@@ -32,19 +35,33 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
 
     private SnakeGameView snakeGameView;
 
+    private MediaPlayer mediaPlayer;
+
+    private SharedPreferences preferences;
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
         hideSystemUI(); // forces it to be fullscreen
 
+        preferences = this.getSharedPreferences("edu.moravian.csci299.gravitysnake", Context.MODE_PRIVATE);
+
         sensorManager = (SensorManager) getSystemService(Service.SENSOR_SERVICE);
         gravitySensor = sensorManager.getDefaultSensor(Sensor.TYPE_GRAVITY);
 
         snakeGameView = findViewById(R.id.snakeGameView);
 
+
         Intent intent = getIntent();
         String difficulty = intent.getStringExtra("spinnerDifficultySelected");
+        String highScoreKey = intent.getStringExtra("difficultyPreferenceKey");
+        snakeGameView.setHighScoreKey(highScoreKey);
+        snakeGameView.setPreferences(this.preferences);
+
+        boolean soundOn = intent.getBooleanExtra("SoundOnOrOffSelected", false);
         switch (difficulty) {
             case "Beginner":
                 snakeGameView.setDifficulty(0);
@@ -62,11 +79,12 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
                 snakeGameView.setDifficulty(4);
                 break;
         }
+        if(soundOn){
+            mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
+            mediaPlayer.start();
+        }
+
     }
-
-
-
-
 
 
     ///// Don't worry about the rest of this code - it deals with making a fullscreen app /////
@@ -121,5 +139,12 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_NORMAL);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        mediaPlayer.release();
+//        mediaPlayer = null;
     }
 }
