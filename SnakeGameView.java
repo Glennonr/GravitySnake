@@ -1,6 +1,7 @@
 package edu.moravian.csci299.gravitysnake;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -12,6 +13,7 @@ import android.hardware.SensorManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.content.SharedPreferences;
 
@@ -37,6 +39,7 @@ public class SnakeGameView extends View implements SensorEventListener {
     private final Paint snakePaint = new Paint();
     private final Paint headPaint = new Paint();
     private final Paint wallPaint = new Paint();
+    private GameActivity gameActivity;
 
 
 
@@ -103,7 +106,8 @@ public class SnakeGameView extends View implements SensorEventListener {
      */
     public float spToPx(float sp) { return sp * displayMetrics.scaledDensity; }
 
-    /**
+    /** Scales the initial speed, the probability of wall placements, and the length increase per food by calling approaptiate
+     * setters in SnakeGame class.
      * @param difficulty the new difficulty for the game
      */
     public void setDifficulty(int difficulty) {
@@ -132,6 +136,14 @@ public class SnakeGameView extends View implements SensorEventListener {
         invalidate();
     }
 
+    /**
+     *Continuiously invalidated method for continuous play back. Draws canvas, goes through and draws food object as circle,
+     * draws the score, draws the snakes body iterating through snakeLocation list, draws the walls by iterating through the wallLocations
+     * list, calls update to update() in SnakeGame the snakegame object and finally checls to see if a new high score was reached if
+     * so then updates preferences appropriately.
+     * @param canvas Canvas object containing what to draw
+     */
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -153,15 +165,19 @@ public class SnakeGameView extends View implements SensorEventListener {
         for(int i = 0; i < wallLocations.size(); i++)
             canvas.drawCircle(wallLocations.get(i).x, wallLocations.get(i).y, dpToPx(SnakeGame.WALL_SIZE_DP), wallPaint);
 
-        snakeGame.update();
-        this.preferences.edit().putInt(highScoreKey, snakeGame.getScore()).apply();
 
+        snakeGame.update();
+        if (snakeGame.getScore() > this.preferences.getInt(highScoreKey, 0)){
+            this.preferences.edit().putInt(highScoreKey, snakeGame.getScore()).apply();
+        }
     }
 
 
-
-
-
+    /**
+     * called from GameActivity class. Measures the angle between the gravity sensor's vector values of acceleration on x and y axeses
+     * and uses Math.atan2() method to get the angle between the two vectors then passes to SnakeGame's setMovementDirection() method.
+     * @param event
+     */
     @Override
     public void onSensorChanged(SensorEvent event) {
         // TODO
@@ -180,13 +196,51 @@ public class SnakeGameView extends View implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) { }
 
+    /**
+     * Sets preferences class variable to the preferences needed to save information across lifecycle changes
+     * @param preferences preference to set class variable preferences to
+     */
 
     public void setPreferences(SharedPreferences preferences) {
         this.preferences = preferences;
     }
 
+    /**
+     * sets class variable highScoreKey to be used to get high score to appropriate key based on difficulty
+     * @param highScoreKey
+     */
     public void setHighScoreKey(String highScoreKey) {
         this.highScoreKey = highScoreKey;
     }
 
+    /**
+     * Handles touch motionevents. If the game is over then the touch event of pressing down brings us back to the start scree.
+     * If the game is still in progress we pass the point containing the x and y values where MotionEvent occurred to touched()
+     * method in our instance of snakeGame to see if touch affected game. We then invalidate to redraw view.
+     * @param event MotionEvent that contains the PointF object containing info on x and y values touchevent occurred at.
+     * @return True after MotionEvent is handled
+     */
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        PointF point = new PointF(event.getX(), event.getY());
+        if (snakeGame.isGameOver()){
+            if(event.getAction() == MotionEvent.ACTION_DOWN){
+                this.gameActivity.finish();
+            }
+        }
+        else{
+            snakeGame.touched(point);
+        }
+        invalidate();
+        return true;
+    }
+
+    /**
+     * sets gameActivity class variable to the instance of GameActivity that called it so that we can call finish and end its lifecycls
+     * after game is over
+     * @param gameActivity
+     */
+    public void setGameActivity(GameActivity gameActivity) {
+        this.gameActivity = gameActivity;
+    }
 }

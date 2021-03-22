@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.content.Context;
@@ -39,6 +40,8 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
 
     private SharedPreferences preferences;
 
+    private boolean soundOn;
+
 
 
     @Override
@@ -47,6 +50,7 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
         setContentView(R.layout.activity_game);
         hideSystemUI(); // forces it to be fullscreen
 
+        //set up preferences
         preferences = this.getSharedPreferences("edu.moravian.csci299.gravitysnake", Context.MODE_PRIVATE);
 
         sensorManager = (SensorManager) getSystemService(Service.SENSOR_SERVICE);
@@ -54,14 +58,17 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
 
         snakeGameView = findViewById(R.id.snakeGameView);
 
-
+        //Get intent and get all the extra values needed to set difficulty and keep track of high score
         Intent intent = getIntent();
         String difficulty = intent.getStringExtra("spinnerDifficultySelected");
         String highScoreKey = intent.getStringExtra("difficultyPreferenceKey");
         snakeGameView.setHighScoreKey(highScoreKey);
         snakeGameView.setPreferences(this.preferences);
+        snakeGameView.setGameActivity(this);
 
-        boolean soundOn = intent.getBooleanExtra("SoundOnOrOffSelected", false);
+        soundOn = intent.getBooleanExtra("SoundOnOrOffSelected", false);
+
+        //determine how which parameter to pass to setDifficulty() to scale difficulty of game features
         switch (difficulty) {
             case "Beginner":
                 snakeGameView.setDifficulty(0);
@@ -79,6 +86,7 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
                 snakeGameView.setDifficulty(4);
                 break;
         }
+        //set up mediaPlayer if needed
         if(soundOn){
             mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
             mediaPlayer.start();
@@ -122,29 +130,63 @@ public class GameActivity extends AppCompatActivity implements SensorEventListen
         timeoutHandler.postDelayed(hideUIRunnable, 2000);
     }
 
+    /**
+     * called by listener for gravity sensor. Simply calls onSensorChanged() method in SnakeGameView class using its SensorEvent parameter
+     * as an argument for the SnakeGameView onSensorChanged() method.
+     * @param event- SensorEvent that contains information that we will pass along to the SnakeGameView onSensorChanged() method
+     */
     @Override
     public void onSensorChanged(SensorEvent event) {
         snakeGameView.onSensorChanged(event);
     }
 
+    /**
+     * Does Nothing
+     * @param sensor
+     * @param accuracy
+     */
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-//      Do Nothing
+
     }
 
     /**
-     * Register listeners when the activity is resumed
+     * Register listener for gravity sensor when the activity is resumed
      */
     @Override
     protected void onResume() {
         super.onResume();
         sensorManager.registerListener(this, gravitySensor, SensorManager.SENSOR_DELAY_NORMAL);
     }
+    /**
+     * Unregister listener for gravity sensor when the activity is stopped
+     */
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorManager.unregisterListener(this);
+    }
 
+    /**
+     * when activity is stopped we must release mediaPlayer for efficiency sake.
+     */
     @Override
     protected void onStop() {
         super.onStop();
         mediaPlayer.release();
-//        mediaPlayer = null;
+        mediaPlayer = null;
     }
+    /**
+     * when activity is started we must release check to see if mediaPlayer has been released and if sound should be on
+     * if the answer is yes to both we must set up our media player and start the game audio.
+     */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (soundOn && mediaPlayer == null) {
+            mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
+            mediaPlayer.start();
+        }
+    }
+
 }
