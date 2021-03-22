@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -13,7 +14,6 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
-
 
 /**
  * Activity that is first, its view acts as the "welcome" screen for the game. This class extends AppCompatActivity and
@@ -28,85 +28,69 @@ import androidx.appcompat.widget.SwitchCompat;
  */
 public class StartActivity extends AppCompatActivity implements View.OnClickListener, AdapterView.OnItemSelectedListener{
 
-
-    private Spinner difficultySpinner;
-    int highScore;
-
-    private MediaPlayer mediaPlayer;
-
+    private Spinner spinner;
     private SwitchCompat soundSwitch;
-
+    private MediaPlayer mediaPlayer;
     private TextView highScoreText;
-
     private SharedPreferences preferences;
 
+    int highScore = 0;
     private int difficulty;
     private String highScoreKey;
     private final String difficultyKey = "difficulty_preference";
     private final String musicKey = "music_preference";
-    private final String highScoreBeginnerKey = "high_beginner_preference";
-    private final String highScoreEasyKey = "high_easy_preference";
-    private final String highScoreMediumKey = "high_medium_preference";
-    private final String highScoreHardKey = "high_hard_preference";
-    private final String highScoreInsaneKey = "high_insane_preference";
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
-        //set up preference and media player for audio.
-        this.preferences = this.getSharedPreferences("edu.moravian.csci299.gravitysnake", Context.MODE_PRIVATE);
-        mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
-        mediaPlayer.setLooping(true);
-        highScore = 0;
 
-        // Set up the difficulty spinner
-        difficultySpinner = findViewById(R.id.difficultySpinner);
+        this.preferences = this.getSharedPreferences("edu.moravian.csci299.gravitysnake", Context.MODE_PRIVATE);
+
+
+        mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
+        soundSwitch = findViewById(R.id.soundSwitch);
+        highScoreText = findViewById(R.id.highScoreValue);
+        TextView highScoreLabel = findViewById(R.id.highScore);
+        findViewById(R.id.playButton).setOnClickListener(this);
+        spinner = findViewById(R.id.difficultySpinner);
+
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this,
                 R.array.difficulty_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        difficultySpinner.setAdapter(adapter);
+        spinner.setAdapter(adapter);
 
-        difficultySpinner.setOnItemSelectedListener(this);
+        spinner.setOnItemSelectedListener(this);
         this.difficulty = preferences.getInt(difficultyKey, 0);
-        difficultySpinner.setSelection(difficulty);
-
-        // Set up the "Play" button
-        findViewById(R.id.playButton).setOnClickListener(this);
+        spinner.setSelection(difficulty);
 
 
-
-        // Set up the sound switch
-        soundSwitch = findViewById(R.id.soundSwitch);
 
         soundSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
-                mediaPlayer.seekTo(0);
-                mediaPlayer.start();
+                if(!mediaPlayer.isPlaying())
+                    mediaPlayer.start();
                 preferences.edit().putBoolean(musicKey, true).apply();
-            } else {
+            }
+            else {
                 mediaPlayer.pause();
                 preferences.edit().putBoolean(musicKey, false).apply();
             }
         });
-        // use preferences to see if user last wanted music on or off
+
         if (preferences.getBoolean(musicKey, true)){
             soundSwitch.setChecked(true);
-            mediaPlayer.start();
+            if(!mediaPlayer.isPlaying())
+                mediaPlayer.start();
         }
         else{
             soundSwitch.setChecked(false);
             mediaPlayer.pause();
         }
 
-        // set high score textview to display appropriate number based on which difficulty is currently selected
 
-        TextView highScoreLabel = findViewById(R.id.highScore);
         highScoreLabel.setText(R.string.highScore);
-        highScoreText = findViewById(R.id.highScoreValue);
-        highScoreText.setText(R.string.highScore);
-
         setHighScoreText();
     }
 
@@ -117,43 +101,37 @@ public class StartActivity extends AppCompatActivity implements View.OnClickList
      */
     @Override
     public void onClick(View v) {
-        if (v == findViewById(R.id.playButton)) {
-            Intent intent = new Intent(this, GameActivity.class);
-            String difficulty = (difficultySpinner.getSelectedItem()).toString();
-
-
-            intent.putExtra("SoundOnOrOffSelected", soundSwitch.isChecked());
-            intent.putExtra("spinnerDifficultySelected", difficulty);
-            intent.putExtra("difficultyPreferenceKey", highScoreKey);
-            startActivity(intent);
-        }
+        if (v == findViewById(R.id.playButton))
+            createIntentStartGame();
     }
 
     /**
-     * when activity is started must check to see if mediaPlayer was released and if it was then set it up again
+     * When the play button is clicked, this method is called.
+     * Create an intent with the sound setting, difficulty selected, and the high score key
+     * and pause the mediaPlayer
+     */
+    private void createIntentStartGame() {
+        Intent intent = new Intent(this, GameActivity.class);
+        intent.putExtra("SoundOnOrOffSelected", soundSwitch.isChecked());
+        intent.putExtra("IndexOfDifficultySelected", difficulty);
+        intent.putExtra("difficultyPreferenceKey", highScoreKey);
+        mediaPlayer.pause();
+        startActivity(intent);
+    }
+
+    /**
+     * On activity start, create and configure the media player
      */
     @Override
     protected void onStart() {
         super.onStart();
-        if (mediaPlayer == null) {
-            mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
-            mediaPlayer.setLooping(true);
-        }
+        mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.booamf);
+        mediaPlayer.setLooping(true);
     }
 
     /**
-     * when activity is resumed we must check to see if the sound switch is on and if it is we must play music audio.
+     * On activity pause, if the media player is playing, pause
      */
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if(soundSwitch.isChecked())
-            mediaPlayer.start();
-    }
-    /**
-     * when activity is paused we must pause music audio if it is currently playing.
-     */
-
     @Override
     protected void onPause() {
         super.onPause();
@@ -166,18 +144,28 @@ public class StartActivity extends AppCompatActivity implements View.OnClickList
     protected void onStop() {
         super.onStop();
         mediaPlayer.release();
-        mediaPlayer = null;
+//        mediaPlayer = null;
+    }
+
+
+    /**
+     * On Activity Resume, if the media player is not playing and the sound switch is checked
+     * Play the mediaPlayer
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if(soundSwitch.isChecked() && !mediaPlayer.isPlaying())
+            mediaPlayer.start();
     }
 
     /**
-     * onItemSelected method called by spinner listener every time spinner value is changed. Every time
-     * this method is called we update the TextView to display high score for selected difficulty and we set difficultyKey
-     * in preferences to the position that was selected to that preferences remember our last selected difficulty.
-     *
-     * @param parent
-     * @param view- view object specifically for us will always be difficultySpinner
-     * @param position- index of the selected item in the spinner array
-     * @param id
+     * When an item is selected in the spinner, set the high score text to display the high score
+     * for that difficulty
+     * @param parent the parent AdapterView
+     * @param view the view the item is selected in
+     * @param position the position of the item selected
+     * @param id the id of the item selected
      */
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -187,40 +175,40 @@ public class StartActivity extends AppCompatActivity implements View.OnClickList
     }
 
     /**
-     * does nothing, needed for onSelecterListerner interface.
-     * @param parent
+     * but must be implemented but does nothing
+     * @param parent the parent AdapterView
      */
     @Override
     public void onNothingSelected(AdapterView<?> parent) {
+//        Do nothing
     }
 
     /**
-     * method called to set the high score textview to display the high score of difficulty currently selected.
+     * method called to set the high score textView to display the high score of difficulty currently selected.
      * Also sets highScoreKey to appropriate difficulty key so preferences can later save a new high score to
      * that specific key.
      */
     private void setHighScoreText(){
         if (difficulty == 0){
-            highScore = preferences.getInt(highScoreBeginnerKey, 0);
-            highScoreKey = highScoreBeginnerKey;
+            highScore = preferences.getInt("high_beginner_preference", 0);
+            highScoreKey = "high_beginner_preference";
         }
         else if (difficulty == 1){
-            highScore = preferences.getInt(highScoreEasyKey, 0);
-            highScoreKey = highScoreEasyKey;
+            highScore = preferences.getInt("high_easy_preference", 0);
+            highScoreKey = "high_easy_preference";
         }
         else if (difficulty == 2){
-            highScore = preferences.getInt(highScoreMediumKey, 0);
-            highScoreKey = highScoreMediumKey;
+            highScore = preferences.getInt("high_medium_preference", 0);
+            highScoreKey = "high_medium_preference";
         }
         else if (difficulty == 3){
-            highScore = preferences.getInt(highScoreHardKey, 0);
-            highScoreKey = highScoreHardKey;
+            highScore = preferences.getInt("high_hard_preference", 0);
+            highScoreKey = "high_hard_preference";
         }
         else{
-            highScore = preferences.getInt(highScoreInsaneKey, 0);
-            highScoreKey = highScoreInsaneKey;
+            highScore = preferences.getInt("high_insane_preference", 0);
+            highScoreKey = "high_insane_preference";
         }
-
         highScoreText.setText(Integer.toString(highScore));
     }
 

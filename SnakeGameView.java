@@ -1,7 +1,7 @@
 package edu.moravian.csci299.gravitysnake;
 
 import android.content.Context;
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -9,13 +9,10 @@ import android.graphics.PointF;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
-import android.hardware.SensorManager;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
-import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
-import android.content.SharedPreferences;
 
 import androidx.annotation.Nullable;
 
@@ -39,7 +36,6 @@ public class SnakeGameView extends View implements SensorEventListener {
     private final Paint snakePaint = new Paint();
     private final Paint headPaint = new Paint();
     private final Paint wallPaint = new Paint();
-    private GameActivity gameActivity;
 
 
 
@@ -51,6 +47,8 @@ public class SnakeGameView extends View implements SensorEventListener {
 
     private String highScoreKey;
     private SharedPreferences preferences;
+    private GameActivity gameActivity;
+
 
 
     // Required constructors for making your own view that can be placed in a layout
@@ -63,6 +61,7 @@ public class SnakeGameView extends View implements SensorEventListener {
 
         // Make the game
         snakeGame = new SnakeGame();
+        this.gameActivity = (GameActivity) context;
 
         // This color is automatically painted as the background
         // TODO: feel free to change this (and it can even be changed to any Drawable if you use setBackground() instead)
@@ -77,10 +76,9 @@ public class SnakeGameView extends View implements SensorEventListener {
         scorePaint.setFakeBoldText(true);
 
         foodPaint.setColor(Color.RED);
-        snakePaint.setColor(Color.BLUE);
+        snakePaint.setColor(Color.parseColor("#21C14C"));
         headPaint.setColor(Color.GREEN);
         wallPaint.setColor(Color.YELLOW);
-
     }
 
     /**
@@ -112,10 +110,33 @@ public class SnakeGameView extends View implements SensorEventListener {
      */
     public void setDifficulty(int difficulty) {
         // TODO: may need to set lots of things here to change the game's difficulty
-            snakeGame.setInitialSpeed(difficulty+0.5);
-            snakeGame.setWallPlacementProbability(difficulty / 10 + .1);
-            snakeGame.setLengthIncreasePerFood(difficulty+1);
-            snakeGame.setLengthIncreasePerFood(10);
+        if(difficulty == 0) {
+            snakeGame.setInitialSpeed(0.5);
+            snakeGame.setWallPlacementProbability(0);
+            snakeGame.setSpeedIncreasePerFood(0.01);
+        }
+        else if (difficulty == 1) {
+            snakeGame.setInitialSpeed(0.75);
+            snakeGame.setWallPlacementProbability(0.0025);
+            snakeGame.setSpeedIncreasePerFood(0.02);
+        }
+        else if (difficulty == 2) {
+            snakeGame.setInitialSpeed(1);
+            snakeGame.setWallPlacementProbability(0.0025);
+            snakeGame.setSpeedIncreasePerFood(0.04);
+        }
+        else if (difficulty == 3) {
+            snakeGame.setInitialSpeed(1.75);
+            snakeGame.setWallPlacementProbability(0.005);
+            snakeGame.setSpeedIncreasePerFood(0.05);
+        }
+        else{
+            snakeGame.setInitialSpeed(2);
+            snakeGame.setWallPlacementProbability(0.0075);
+            snakeGame.setSpeedIncreasePerFood(0.06);
+        }
+        snakeGame.setLengthIncreasePerFood(10);
+
 
         }
 
@@ -137,13 +158,12 @@ public class SnakeGameView extends View implements SensorEventListener {
     }
 
     /**
-     *Continuiously invalidated method for continuous play back. Draws canvas, goes through and draws food object as circle,
+     *Continuously invalidated method for continuous play back. Draws canvas, goes through and draws food object as circle,
      * draws the score, draws the snakes body iterating through snakeLocation list, draws the walls by iterating through the wallLocations
-     * list, calls update to update() in SnakeGame the snakegame object and finally checls to see if a new high score was reached if
+     * list, calls update to update() in SnakeGame the snakeGame object and finally checks to see if a new high score was reached if
      * so then updates preferences appropriately.
      * @param canvas Canvas object containing what to draw
      */
-
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -151,24 +171,33 @@ public class SnakeGameView extends View implements SensorEventListener {
 
         // TODO: update the game and draw the view
         PointF foodLocation = snakeGame.getFoodLocation();
-        List<PointF> wallLocations = snakeGame.getWallLocations();
+
         canvas.drawCircle(foodLocation.x, foodLocation.y, dpToPx(SnakeGame.FOOD_SIZE_DP), foodPaint);
-        canvas.drawText(String.valueOf(snakeGame.getScore()), canvas.getWidth()/2,100, scorePaint);
+        canvas.drawText(String.valueOf(snakeGame.getScore()), getWidth() >> 1,100, scorePaint);
+        drawSnake(canvas);
+        drawWalls(canvas);
+
+        snakeGame.update();
+
+        if(snakeGame.getScore() > preferences.getInt(highScoreKey, 100))
+            this.preferences.edit().putInt(highScoreKey, snakeGame.getScore()).apply();
+    }
+
+
+    private void drawWalls(Canvas canvas) {
+        List<PointF> wallLocations = snakeGame.getWallLocations();
+        for(PointF point: wallLocations)
+            canvas.drawCircle(point.x, point.y, dpToPx(SnakeGame.WALL_SIZE_DP), wallPaint);
+    }
+
+    private void drawSnake(Canvas canvas) {
         List<PointF> snakeLocation = snakeGame.getSnakeBodyLocations();
-        for(int i = snakeLocation.size()-1; i > -1; i--){
+        for(int i = snakeLocation.size() - 1; i >= 0; i--){
             PointF point = snakeLocation.get(i);
             if(i==0)
                 canvas.drawCircle(point.x, point.y, dpToPx(Snake.BODY_PIECE_SIZE_DP), headPaint);
             else
                 canvas.drawCircle(point.x, point.y, dpToPx(Snake.BODY_PIECE_SIZE_DP), snakePaint);
-        }
-        for(int i = 0; i < wallLocations.size(); i++)
-            canvas.drawCircle(wallLocations.get(i).x, wallLocations.get(i).y, dpToPx(SnakeGame.WALL_SIZE_DP), wallPaint);
-
-
-        snakeGame.update();
-        if (snakeGame.getScore() > this.preferences.getInt(highScoreKey, 0)){
-            this.preferences.edit().putInt(highScoreKey, snakeGame.getScore()).apply();
         }
     }
 
@@ -176,17 +205,14 @@ public class SnakeGameView extends View implements SensorEventListener {
     /**
      * called from GameActivity class. Measures the angle between the gravity sensor's vector values of acceleration on x and y axeses
      * and uses Math.atan2() method to get the angle between the two vectors then passes to SnakeGame's setMovementDirection() method.
-     * @param event
+     * @param event the SensorEvent for the sensor that had a change
      */
     @Override
     public void onSensorChanged(SensorEvent event) {
         // TODO
         float x = event.values[0];
         float y = event.values[1];
-        double hypotenuse = Math.hypot(x, y);
 
-//      Hypotenuse value must be from 0-1 so we need to normalize it
-        double normalized = (hypotenuse) / (9.81);
         double angle = Math.atan2(y, -x);
 
         snakeGame.setMovementDirection(angle);
@@ -200,24 +226,24 @@ public class SnakeGameView extends View implements SensorEventListener {
      * Sets preferences class variable to the preferences needed to save information across lifecycle changes
      * @param preferences preference to set class variable preferences to
      */
-
     public void setPreferences(SharedPreferences preferences) {
         this.preferences = preferences;
     }
 
     /**
      * sets class variable highScoreKey to be used to get high score to appropriate key based on difficulty
-     * @param highScoreKey
+     * @param highScoreKey the difficulty that was selected so the appropriate high score is changed
      */
     public void setHighScoreKey(String highScoreKey) {
         this.highScoreKey = highScoreKey;
     }
 
+
     /**
-     * Handles touch motionevents. If the game is over then the touch event of pressing down brings us back to the start scree.
+     * Handles touch motionEvents. If the game is over then the touch event of pressing down brings us back to the start scree.
      * If the game is still in progress we pass the point containing the x and y values where MotionEvent occurred to touched()
      * method in our instance of snakeGame to see if touch affected game. We then invalidate to redraw view.
-     * @param event MotionEvent that contains the PointF object containing info on x and y values touchevent occurred at.
+     * @param event MotionEvent that contains the PointF object containing info on x and y values touchEvent occurred at.
      * @return True after MotionEvent is handled
      */
     @Override
@@ -236,11 +262,14 @@ public class SnakeGameView extends View implements SensorEventListener {
     }
 
     /**
-     * sets gameActivity class variable to the instance of GameActivity that called it so that we can call finish and end its lifecycls
+     * sets gameActivity class variable to the instance of GameActivity that called it so that we can call finish and end its lifecycle
      * after game is over
-     * @param gameActivity
+     * @param gameActivity the GameActivity that is using this view
      */
     public void setGameActivity(GameActivity gameActivity) {
         this.gameActivity = gameActivity;
     }
+
+
+
 }
